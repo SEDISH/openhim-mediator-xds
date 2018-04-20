@@ -15,6 +15,7 @@ import ihe.iti.xds_b._2007.ProvideAndRegisterDocumentSetRequestType;
 import ihe.iti.xds_b._2007.ObjectFactory;
 import oasis.names.tc.ebxml_regrep.xsd.rim._3.*;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.dcm4chee.xds2.common.XDSConstants;
 import org.dcm4chee.xds2.infoset.util.InfosetUtil;
@@ -30,6 +31,7 @@ import org.openhim.mediator.exceptions.CXParseException;
 import org.openhim.mediator.exceptions.ValidationException;
 import org.openhim.mediator.messages.*;
 import org.openhim.mediator.normalization.ParseProvideAndRegisterRequestActor;
+import org.openhim.mediator.parser.XopIncludeElementParser;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
@@ -215,14 +217,44 @@ public class ProvideAndRegisterOrchestrationActor extends UntypedActor {
     }
 
     private void initSccToBeResolved() {
-        if (parsedRequest != null && parsedRequest.getDocument() != null && parsedRequest.getDocument().size() > 1) {
+        if (parsedRequest != null && parsedRequest.getDocument().size() > 1) {
             for (ProvideAndRegisterDocumentSetRequestType.Document doc : parsedRequest.getDocument()) {
                 if (doc.getId().contains(SCC_DOC_ID_PREFIX)) {
+                    String documentBody = getDocumentBodyFromXopInclude(doc, originalRequest.getDocuments());
+                    if (!StringUtils.isBlank(documentBody)) { //document value is included in XOP attachment
+                        doc.getContent().clear();
+                        doc.getContent().add(documentBody);
+                    }
                     sccDocument = new SccDocument(doc);
                     break;
                 }
             }
         }
+    }
+
+    private String getCdaDocumentFromXOP(Map<String, String> xopDocuments) {
+        String cdaDocument = null;
+        if (parsedRequest != null && xopDocuments != null) {
+            for (ProvideAndRegisterDocumentSetRequestType.Document document : parsedRequest.getDocument()) {
+                if (!document.getId().contains(SCC_DOC_ID_PREFIX)) {
+                    cdaDocument = getDocumentBodyFromXopInclude(document, xopDocuments);
+                    break;
+                }
+            }
+        }
+        return cdaDocument;
+    }
+
+    private String getDocumentBodyFromXopInclude(ProvideAndRegisterDocumentSetRequestType.Document document,
+                                             Map<String, String> xopDocuments) {
+        String documentBody = null;
+        if (!document.getContent().isEmpty() && !xopDocuments.isEmpty()) {
+                String contentId = XopIncludeElementParser.getContentId(document.getContent().get(0));
+                if (!StringUtils.isBlank(contentId)) {
+                    documentBody = xopDocuments.get(contentId);
+                }
+        }
+        return documentBody;
     }
 
     private void removeSccFromOriginalRequest() {
@@ -239,7 +271,7 @@ public class ProvideAndRegisterOrchestrationActor extends UntypedActor {
     }
 
     private void resolveSccRequest() {
-        if (sccDocument != null && !sccDocument.isSuccessful()) {
+        if (sccDocument != null && !sccDocument.isProcessed()) {
             log.info("Resolving scc request");
 
             ActorRef resolveSccHandler = getContext().actorOf(Props.create(SCCRequestActor.class, config), "scc-denormalization");
@@ -514,7 +546,8 @@ public class ProvideAndRegisterOrchestrationActor extends UntypedActor {
     }
 
     private void autoRegisterPatient() {
-        String document = originalRequest.getDocument(); //is mime?
+        Map<String, String> documents = originalRequest.getDocuments();
+        String document = getCdaDocumentFromXOP(documents);
         if (document == null) { //else get from parsed message
             if (parsedRequest.getDocument()!=null && parsedRequest.getDocument().size()>=1) {
                 document = parsedRequest.getDocument().get(0).getContent().get(0).toString();
@@ -572,7 +605,7 @@ public class ProvideAndRegisterOrchestrationActor extends UntypedActor {
     }
 
     private boolean isSccResolved() {
-        return sccDocument == null || sccDocument.isSuccessful();
+        return sccDocument == null || sccDocument.isProcessed();
     }
 
     private void respondSuccess() throws JAXBException {
@@ -712,6 +745,12 @@ public class ProvideAndRegisterOrchestrationActor extends UntypedActor {
         }
     }
 
+    private void processResolvedScc(ResolveSccResponse response) {
+        if (!response.getSuccess()) {
+            respondBadRequest(response.getErroMessge());
+        }
+        sccDocument.setProcessed(true);
+    }
 
     @Override
     public void onReceive(Object msg) throws Exception {
@@ -732,7 +771,7 @@ public class ProvideAndRegisterOrchestrationActor extends UntypedActor {
             processResolvedFacilityId((ResolveFacilityIdentifierResponse) msg);
             checkAndRespondIfAllResolved();
         } else if (msg instanceof ResolveSccResponse) {
-            sccDocument.setSuccessful(((ResolveSccResponse) msg).getSuccess());
+            processResolvedScc((ResolveSccResponse) msg);
             checkAndRespondIfAllResolved();
         } else if (msg instanceof RegisterNewPatientResponse) {
             processRegisterNewPatientResponse((RegisterNewPatientResponse) msg);

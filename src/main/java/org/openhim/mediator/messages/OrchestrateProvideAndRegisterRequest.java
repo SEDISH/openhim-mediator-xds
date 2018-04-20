@@ -9,6 +9,8 @@ package org.openhim.mediator.messages;
 import akka.actor.ActorRef;
 import org.openhim.mediator.engine.messages.SimpleMediatorRequest;
 
+import java.util.Map;
+
 /**
  * Orchestrate an XDS.b Provider and Register request
  */
@@ -19,12 +21,12 @@ public class OrchestrateProvideAndRegisterRequest extends SimpleMediatorRequest<
     //the actual document contained in the request, if available
     //the mime handler will place it here, however if not available
     //it will likely need to be retrieved from the XDS.b contents (document element)
-    private final String document;
+    private final Map<String, String> documents;
 
-    public OrchestrateProvideAndRegisterRequest(ActorRef requestHandler, ActorRef respondTo, String requestObject, String xForwardedFor, String document, String messageID) {
+    public OrchestrateProvideAndRegisterRequest(ActorRef requestHandler, ActorRef respondTo, String requestObject, String xForwardedFor, Map<String, String> documents, String messageID) {
         super(requestHandler, respondTo, requestObject);
         this.xForwardedFor = xForwardedFor;
-        this.document = document;
+        this.documents = documents;
         this.messageID = messageID;
     }
 
@@ -32,8 +34,8 @@ public class OrchestrateProvideAndRegisterRequest extends SimpleMediatorRequest<
         return xForwardedFor;
     }
 
-    public String getDocument() {
-        return document;
+    public Map<String, String> getDocuments() {
+        return documents;
     }
 
     public String getMessageID() {

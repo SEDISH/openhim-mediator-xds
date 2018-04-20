@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 
+import static org.openhim.mediator.parser.MimeDocumentElementParser.getBodyPartContentId;
+
 /**
  * A MIME container for processing MTOM/XOP requests.
  * <br/><br/>
@@ -55,14 +57,14 @@ public class XDSbMimeProcessorActor extends UntypedActor {
     }
 
     public static class XDSbMimeProcessorResponse extends SimpleMediatorResponse<String> {
-        final List<String> documents;
+        final Map<String, String> documents;
 
-        public XDSbMimeProcessorResponse(MediatorRequestMessage originalRequest, String requestObject, List<String> documents) {
+        public XDSbMimeProcessorResponse(MediatorRequestMessage originalRequest, String requestObject, Map<String, String> documents) {
             super(originalRequest, requestObject);
             this.documents = documents;
         }
 
-        public List<String> getDocuments() {
+        public Map<String, String> getDocuments() {
             return documents;
         }
     }
@@ -88,7 +90,7 @@ public class XDSbMimeProcessorActor extends UntypedActor {
     MimeMultipart mimeMessage;
 
     private String _soapPart;
-    private List<String> _documents = new ArrayList<>(1);
+    private Map<String, String> _documents = new HashMap<>(1);
 
     private void parseMimeMessage(String msg, String contentType) throws IOException, MessagingException, SOAPPartNotFound, UnprocessableContentFound {
         mimeMessage = new MimeMultipart(new ByteArrayDataSource(msg, contentType));
@@ -98,7 +100,7 @@ public class XDSbMimeProcessorActor extends UntypedActor {
             if (part.getContentType().contains("application/soap+xml")) {
                 _soapPart = getValue(part);
             } else {
-                _documents.add(getValue(part));
+                _documents.put(getBodyPartContentId(part), getValue(part));
             }
         }
 

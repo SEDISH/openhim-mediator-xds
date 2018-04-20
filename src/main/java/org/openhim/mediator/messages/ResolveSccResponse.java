@@ -1,24 +1,27 @@
 package org.openhim.mediator.messages;
 
+import org.openhim.mediator.datatypes.Acknowledgement;
 import org.openhim.mediator.engine.messages.MediatorRequestMessage;
 import org.openhim.mediator.engine.messages.MediatorResponseMessage;
 
 public class ResolveSccResponse extends MediatorResponseMessage {
 
-    private final Boolean success;
-    private final String response;
+    private final Acknowledgement acknowledgement;
 
-    public ResolveSccResponse(MediatorRequestMessage originalRequest, Boolean success, String response) {
+    public ResolveSccResponse(MediatorRequestMessage originalRequest, Acknowledgement acknowledgement) {
         super(originalRequest);
-        this.success = success;
-        this.response = response;
+        this.acknowledgement = acknowledgement;
     }
 
     public Boolean getSuccess() {
-        return success;
+        return acknowledgement.isSuccess();
     }
 
-    public String getResponse() {
-        return response;
+    public String getErroMessge() {
+        String error = acknowledgement.getErrorCode();
+        if (acknowledgement.getErrorDiagnosticsInformation() != null) {
+            error += ":" + acknowledgement.getErrorDiagnosticsInformation();
+        }
+        return error;
     }
 }

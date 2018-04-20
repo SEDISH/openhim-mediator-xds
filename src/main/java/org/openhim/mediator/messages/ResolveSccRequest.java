@@ -13,4 +13,8 @@ public class ResolveSccRequest extends MediatorRequestMessage {
         super(requestHandler, respondTo, "resolve-scc", correlationId);
         this.document = document;
     }
+
+    public String getDocumentBody() {
+        return (String) document.getContent().get(0);
+    }
 }

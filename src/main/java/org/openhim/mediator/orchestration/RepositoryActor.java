@@ -51,7 +51,7 @@ public class RepositoryActor extends UntypedActor {
     private String action;
     private String messageID;
     private String xForwardedFor;
-    private String mimeDocument;
+    private Map<String, String> mimeDocuments;
     private String contentType;
     private boolean messageIsMTOM;
 
@@ -88,11 +88,7 @@ public class RepositoryActor extends UntypedActor {
             log.info("Successfully parsed multipart contents");
             messageBuffer = msg.getResponseObject();
 
-            if (msg.getDocuments()!=null && msg.getDocuments().size()>0) {
-                //TODO atm only a single document is handled
-                //this is just used for 'autoRegister' and really only so that there is _some_ support for mtom.
-                mimeDocument = msg.getDocuments().get(0);
-            }
+            mimeDocuments = msg.getDocuments();
 
             triggerRepositoryAction();
         } else if (msg.getOriginalRequest() instanceof XDSbMimeProcessorActor.EnrichedMessage) {
@@ -167,7 +163,7 @@ public class RepositoryActor extends UntypedActor {
         try {
             soapWrapper = new SOAPWrapper(messageBuffer);
             OrchestrateProvideAndRegisterRequest msg = new OrchestrateProvideAndRegisterRequest(
-                    originalRequest.getRequestHandler(), getSelf(), soapWrapper.getSoapBody(), xForwardedFor, mimeDocument, messageID
+                    originalRequest.getRequestHandler(), getSelf(), soapWrapper.getSoapBody(), xForwardedFor, mimeDocuments, messageID
             );
             pnrOrchestrator.tell(msg, getSelf());
         } catch (SOAPWrapper.SOAPParseException ex) {

@@ -6,11 +6,11 @@ import java.util.Objects;
 
 public class SccDocument {
 
-    boolean successful = false;
+    private boolean processed;
     private ProvideAndRegisterDocumentSetRequestType.Document document;
 
     public SccDocument(ProvideAndRegisterDocumentSetRequestType.Document document) {
-        this.successful = successful;
+        this.processed = false;
         this.document = document;
     }
 
@@ -22,12 +22,12 @@ public class SccDocument {
         this.document = document;
     }
 
-    public boolean isSuccessful() {
-        return successful;
+    public boolean isProcessed() {
+        return processed;
     }
 
-    public void setSuccessful(boolean successful) {
-        this.successful = successful;
+    public void setProcessed(boolean processed) {
+        this.processed = processed;
     }
 
     @Override
@@ -35,12 +35,12 @@ public class SccDocument {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SccDocument that = (SccDocument) o;
-        return successful == that.successful &&
+        return processed == that.processed &&
                 Objects.equals(document, that.document);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(successful, document);
+        return Objects.hash(processed, document);
     }
 }
