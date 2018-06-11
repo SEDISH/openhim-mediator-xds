@@ -58,6 +58,7 @@ public class XDSbMimeProcessorActorTest {
     @Test
     public void testMimeMessage_shouldReturnDocuments() throws Exception {
         InputStream testPnRBasicMtomIn = getClass().getClassLoader().getResourceAsStream("PnRBasicMtom.xml");
+        final String expectedDocumentId = "76A2C3D9BCD3AECFF31217932910229";
         final String testPnRBasicMtom = IOUtils.toString(testPnRBasicMtomIn);
 
         new JavaTestKit(system) {{
@@ -67,7 +68,7 @@ public class XDSbMimeProcessorActorTest {
 
             XDSbMimeProcessorActor.XDSbMimeProcessorResponse result = expectMsgClass(Duration.create(60, TimeUnit.SECONDS), XDSbMimeProcessorActor.XDSbMimeProcessorResponse.class);
             assertEquals(1, result.documents.size());
-            assertEquals("This is my document.\nIt is great!\n", result.getDocuments().get(0));
+            assertEquals("This is my document.\nIt is great!\n", result.getDocuments().get(expectedDocumentId));
         }};
     }
 
