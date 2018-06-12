@@ -1,12 +1,15 @@
 package org.openhim.mediator.dsub.service;
 
 import akka.event.LoggingAdapter;
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.oasis_open.docs.wsn.b_2.NotificationMessageHolderType;
 import org.openhim.mediator.dsub.pull.PullPoint;
 import org.openhim.mediator.dsub.pull.PullPointFactory;
 import org.openhim.mediator.dsub.subscription.Subscription;
 import org.openhim.mediator.dsub.subscription.SubscriptionNotifier;
 import org.openhim.mediator.dsub.subscription.SubscriptionRepository;
 
+import javax.xml.ws.wsaddressing.W3CEndpointReference;
 import java.util.Date;
 import java.util.List;
 
@@ -50,7 +53,7 @@ public class DsubServiceImpl implements DsubService {
                 .findActiveSubscriptions(facilityId);
 
         for (Subscription sub : subscriptions) {
-            subscriptionNotifier.notifySubscription(sub);
+            subscriptionNotifier.notifySubscription(sub, docId);
         }
     }
 

@@ -6,6 +6,7 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoDatabase;
+import ihe.iti.xds_b._2007.ProvideAndRegisterDocumentSetRequestType;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.HttpStatus;
@@ -13,12 +14,14 @@ import org.oasis_open.docs.wsn.b_2.CreatePullPoint;
 import org.oasis_open.docs.wsn.b_2.DestroyPullPoint;
 import org.oasis_open.docs.wsn.b_2.GetCurrentMessage;
 import org.oasis_open.docs.wsn.b_2.GetMessages;
+import org.oasis_open.docs.wsn.b_2.NotificationMessageHolderType;
 import org.oasis_open.docs.wsn.b_2.Notify;
 import org.oasis_open.docs.wsn.b_2.PauseSubscription;
 import org.oasis_open.docs.wsn.b_2.Renew;
 import org.oasis_open.docs.wsn.b_2.ResumeSubscription;
 import org.oasis_open.docs.wsn.b_2.Subscribe;
 import org.oasis_open.docs.wsn.b_2.Unsubscribe;
+import org.openhim.mediator.datatypes.DocumentsHolder;
 import org.openhim.mediator.dsub.pull.PullPointFactory;
 import org.openhim.mediator.dsub.service.DsubService;
 import org.openhim.mediator.dsub.service.DsubServiceImpl;
@@ -64,7 +67,7 @@ public class DsubActor extends UntypedActor {
 
         PullPointFactory pullPointFactory = new PullPointFactory(mongoDb);
         SubscriptionRepository subRepo = new MongoSubscriptionRepository(mongoDb, log);
-        SubscriptionNotifier subNotifier = new SoapSubscriptionNotifier();
+        SubscriptionNotifier subNotifier = new SoapSubscriptionNotifier(config);
 
         dsubService = new DsubServiceImpl(pullPointFactory, subRepo,
                 subNotifier, log);
@@ -74,6 +77,10 @@ public class DsubActor extends UntypedActor {
     public void onReceive(Object msg) {
         if (msg instanceof MediatorHTTPRequest) {
             handleMessage((MediatorHTTPRequest) msg);
+        } else if (msg instanceof DocumentsHolder) {
+            for (String documentId : ((DocumentsHolder) msg).getDocuments().keySet()) {
+                dsubService.notifyNewDocument(documentId, null);
+            }
         }
     }
 

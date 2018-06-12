@@ -7,9 +7,13 @@
 package org.openhim.mediator.normalization;
 
 import akka.actor.ActorRef;
+import akka.actor.Props;
 import akka.actor.UntypedActor;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.openhim.mediator.datatypes.DocumentsHolder;
+import org.openhim.mediator.dsub.DsubActor;
+import org.openhim.mediator.engine.MediatorConfig;
 import org.openhim.mediator.engine.messages.ExceptError;
 import org.openhim.mediator.engine.messages.MediatorRequestMessage;
 import org.openhim.mediator.engine.messages.SimpleMediatorRequest;
@@ -38,6 +42,24 @@ import java.util.*;
  * </ul>
  */
 public class XDSbMimeProcessorActor extends UntypedActor {
+
+    private static final String SOAP_CONTENT_TYPE = "application/soap+xml";
+    private static final String DOCUMENT_CONTENT_TYPE = "application/octet-stream";
+    private static final String HL7_CONTENT_TYPE = "application/hl7-v2";
+    public static final String CONTENT_ID_HEADER = "Content-Id";
+
+    private MimeMultipart mimeMessage;
+    private ActorRef dsubActor;
+    private boolean hl7MessageExist;
+    private String soapPart;
+    private DocumentsHolder documentsHolder = new DocumentsHolder();
+
+
+    XDSbMimeProcessorActor() {}
+
+    XDSbMimeProcessorActor(MediatorConfig config) {
+        dsubActor = getContext().actorOf(Props.create(DsubActor.class, config), "xds-dsub");
+    }
 
     public static class MimeMessage extends SimpleMediatorRequest<String> {
         final String contentType;
@@ -85,26 +107,65 @@ public class XDSbMimeProcessorActor extends UntypedActor {
         }
     }
 
-    MimeMultipart mimeMessage;
+    @Override
+    public void onReceive(Object msg) throws Exception {
+        if (msg instanceof MimeMessage) {
+            try {
+                parseMimeMessage(((MimeMessage) msg).getRequestObject(), ((MimeMessage) msg).contentType);
+                List<String> documents = new ArrayList<>(documentsHolder.getDocuments().values());
+                ((MimeMessage) msg).getRespondTo().tell(new XDSbMimeProcessorResponse((MediatorRequestMessage) msg, soapPart, documents), getSelf());
+                if (hl7MessageExist) {
+                    dsubActor.tell(documentsHolder, getSelf());
+                }
 
-    private String _soapPart;
-    private List<String> _documents = new ArrayList<>(1);
+            } catch (IOException | MessagingException | SOAPPartNotFound | UnprocessableContentFound ex) {
+                ((MimeMessage) msg).getRequestHandler().tell(new ExceptError(ex), getSelf());
+            }
+        } else if (msg instanceof EnrichedMessage) {
+            if (mimeMessage==null) {
+                ((EnrichedMessage) msg).getRequestHandler().tell(new ExceptError(new NoPreviousMimeMessage()), getSelf());
+            } else {
+                try {
+                    String mime = buildEnrichedMimeMessage(((EnrichedMessage) msg).getRequestObject());
+                    List<String> documents = new ArrayList<>(documentsHolder.getDocuments().values());
+                    ((EnrichedMessage) msg).getRespondTo().tell(new XDSbMimeProcessorResponse((MediatorRequestMessage) msg, mime, documents), getSelf());
+                } catch (MessagingException | IOException ex) {
+                    ((EnrichedMessage) msg).getRequestHandler().tell(new ExceptError(ex), getSelf());
+                }
+            }
+        } else {
+            unhandled(msg);
+        }
+    }
 
     private void parseMimeMessage(String msg, String contentType) throws IOException, MessagingException, SOAPPartNotFound, UnprocessableContentFound {
         mimeMessage = new MimeMultipart(new ByteArrayDataSource(msg, contentType));
-        for (int i=0; i<mimeMessage.getCount(); i++) {
+        for (int i = 0; i < mimeMessage.getCount(); i++) {
             BodyPart part = mimeMessage.getBodyPart(i);
 
-            if (part.getContentType().contains("application/soap+xml")) {
-                _soapPart = getValue(part);
+            if (part.getContentType().contains(SOAP_CONTENT_TYPE)) {
+                soapPart = getValue(part);
+            } else if (part.getContentType().contains(HL7_CONTENT_TYPE)) {
+                hl7MessageExist = true;
             } else {
-                _documents.add(getValue(part));
+                documentsHolder.getDocuments().put(getDocumentId(part), getValue(part));
             }
         }
 
-        if (_soapPart==null) {
+        if (soapPart == null) {
             throw new SOAPPartNotFound();
         }
+    }
+
+    private String getDocumentId(BodyPart part) throws MessagingException {
+        if (part.getHeader(CONTENT_ID_HEADER).length == 0) {
+            throw new MessagingException("There is no id for a document");
+        }
+
+        if ((part.getHeader(CONTENT_ID_HEADER).length > 1)) {
+            throw new MessagingException("Ambigous document id. There are more than 1 document id.");
+        }
+        return part.getHeader(CONTENT_ID_HEADER)[0];
     }
 
     private String getValue(BodyPart part) throws IOException, MessagingException, UnprocessableContentFound {
@@ -148,31 +209,6 @@ public class XDSbMimeProcessorActor extends UntypedActor {
         while (headers.hasMoreElements()) {
             Header header = (Header) headers.nextElement();
             part.setHeader(header.getName(), header.getValue());
-        }
-    }
-
-    @Override
-    public void onReceive(Object msg) throws Exception {
-        if (msg instanceof MimeMessage) {
-            try {
-                parseMimeMessage(((MimeMessage) msg).getRequestObject(), ((MimeMessage) msg).contentType);
-                ((MimeMessage) msg).getRespondTo().tell(new XDSbMimeProcessorResponse((MediatorRequestMessage) msg, _soapPart, _documents), getSelf());
-            } catch (IOException | MessagingException | SOAPPartNotFound | UnprocessableContentFound ex) {
-                ((MimeMessage) msg).getRequestHandler().tell(new ExceptError(ex), getSelf());
-            }
-        } else if (msg instanceof EnrichedMessage) {
-            if (mimeMessage==null) {
-                ((EnrichedMessage) msg).getRequestHandler().tell(new ExceptError(new NoPreviousMimeMessage()), getSelf());
-            } else {
-                try {
-                    String mime = buildEnrichedMimeMessage(((EnrichedMessage) msg).getRequestObject());
-                    ((EnrichedMessage) msg).getRespondTo().tell(new XDSbMimeProcessorResponse((MediatorRequestMessage) msg, mime, _documents), getSelf());
-                } catch (MessagingException | IOException ex) {
-                    ((EnrichedMessage) msg).getRequestHandler().tell(new ExceptError(ex), getSelf());
-                }
-            }
-        } else {
-            unhandled(msg);
         }
     }
 }

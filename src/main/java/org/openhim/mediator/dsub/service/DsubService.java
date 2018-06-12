@@ -1,5 +1,7 @@
 package org.openhim.mediator.dsub.service;
 
+import org.oasis_open.docs.wsn.b_2.NotificationMessageHolderType;
+
 import java.util.Date;
 import java.util.List;
 

@@ -61,7 +61,8 @@ public class RepositoryActor extends UntypedActor {
 
     public RepositoryActor(MediatorConfig config) {
         this.config = config;
-        mtomProcessor = getContext().actorOf(Props.create(XDSbMimeProcessorActor.class), "xds-multipart-normalization");
+        mtomProcessor = getContext().actorOf(Props.create(XDSbMimeProcessorActor.class, config),
+                "xds-multipart-normalization");
     }
 
 
