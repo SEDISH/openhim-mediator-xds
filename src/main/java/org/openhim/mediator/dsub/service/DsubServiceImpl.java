@@ -35,7 +35,11 @@ public class DsubServiceImpl implements DsubService {
         Subscription subscription = new Subscription(url,
                 terminateAt, facilityQuery);
 
-        subscriptionRepository.saveSubscription(subscription);
+        if (subscriptionExists(url, facilityQuery) == false) {
+            subscriptionRepository.saveSubscription(subscription);            
+        } else {
+            log.error("unable to create subscription. Another one already exists for: " + url);
+        }
     }
 
     @Override
@@ -49,7 +53,9 @@ public class DsubServiceImpl implements DsubService {
         List<Subscription> subscriptions = subscriptionRepository
                 .findActiveSubscriptions(facilityId);
 
+        log.info("Active subscriptions: {}", subscriptions.size());
         for (Subscription sub : subscriptions) {
+            log.info("URL: {}", sub.getUrl());
             subscriptionNotifier.notifySubscription(sub, docId);
         }
     }
@@ -64,5 +70,23 @@ public class DsubServiceImpl implements DsubService {
     public List<String> getDocumentsForPullPoint(String locationId) {
         PullPoint pullPoint = pullPointFactory.get(locationId);
         return pullPoint.getDocumentIds();
+    }
+
+    @Override
+    public Boolean subscriptionExists(String url, String facility) {
+        Boolean subcriptionFound = false;
+        List<Subscription> subscriptions = subscriptionRepository
+                .findActiveSubscriptions(facility);
+
+        log.info("Active subscriptions: {}", subscriptions.size());
+        for (Subscription sub : subscriptions) {
+            log.info("URL: {}", sub.getUrl());
+            if (url.equals(sub.getUrl())) {
+                subcriptionFound = true;
+                break;
+            }
+        }
+
+        return subcriptionFound;
     }
 }

@@ -65,7 +65,7 @@ public class DsubActor extends UntypedActor {
 
         PullPointFactory pullPointFactory = new PullPointFactory(mongoDb);
         SubscriptionRepository subRepo = new MongoSubscriptionRepository(mongoDb, log);
-        SubscriptionNotifier subNotifier = new SoapSubscriptionNotifier(config);
+        SubscriptionNotifier subNotifier = new SoapSubscriptionNotifier(config, log);
 
         dsubService = new DsubServiceImpl(pullPointFactory, subRepo,
                 subNotifier, log);
