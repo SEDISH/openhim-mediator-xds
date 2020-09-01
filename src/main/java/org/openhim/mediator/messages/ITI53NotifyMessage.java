@@ -11,9 +11,6 @@ public class ITI53NotifyMessage {
     private String documentId;
 
     private static final String TEMPLATE =
-            "------OPENHIM\n" +
-            "Content-Type: application/xop+xml; charset=utf-8; type=\"application/soap+xml\"\n" +
-            "\n" +
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
             "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" " +
             "xmlns:a=\"http://www.w3.org/2005/08/addressing\" " +
@@ -21,6 +18,7 @@ public class ITI53NotifyMessage {
             "xmlns:wsnt=\"http://docs.oasis-open.org/wsn/b-2\" " +
             "xmlns:xds=\"urn:ihe:iti:xds-b:2007\" " +
             "xmlns:rim=\"urn:oasis:names:tc:ebxml-regrep:xsd:rim:3.0\" " +
+            "xmlns:lcm=\"urn:oasis:names:tc:ebxml-regrep:xsd:lcm:3.0\" " +
             "xsi:schemaLocation=\"http://www.w3.org/2003/05/soap-envelope http://www.w3.org/2003/05/soapenvelope " +
             "http://www.w3.org/2005/08/addressing http://www.w3.org/2005/08/addressing/ws-addr.xsd " +
             "http://docs.oasis-open.org/wsn/b-2 http://docs.oasis-open.org/wsn/b-2.xsd urn:ihe:iti:xds-b:2007 " +
@@ -55,8 +53,7 @@ public class ITI53NotifyMessage {
             "</wsnt:NotificationMessage>" +
             "</wsnt:Notify>" +
             "</s:Body>" +
-            "</s:Envelope>" +
-            "------OPENHIM--";
+            "</s:Envelope>";
 
     public ITI53NotifyMessage(String recipientServerAddress, String brokerServerAddress, String documentId) {
         this.messageId = UUID.randomUUID().toString();
