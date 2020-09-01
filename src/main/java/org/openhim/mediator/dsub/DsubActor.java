@@ -39,6 +39,8 @@ import javax.xml.transform.TransformerException;
 import javax.xml.ws.wsaddressing.W3CEndpointReference;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.URL;
+import java.net.URI;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -65,7 +67,7 @@ public class DsubActor extends UntypedActor {
 
         PullPointFactory pullPointFactory = new PullPointFactory(mongoDb);
         SubscriptionRepository subRepo = new MongoSubscriptionRepository(mongoDb, log);
-        SubscriptionNotifier subNotifier = new SoapSubscriptionNotifier(config);
+        SubscriptionNotifier subNotifier = new SoapSubscriptionNotifier(config, log);
 
         dsubService = new DsubServiceImpl(pullPointFactory, subRepo,
                 subNotifier, log);
@@ -149,7 +151,11 @@ public class DsubActor extends UntypedActor {
                 }
             }
         }
-        dsubService.createSubscription(uri, null, terminationDate);
+        if (parseUrl(uri) != null) {
+            dsubService.createSubscription(uri, null, terminationDate);            
+        } else {
+            log.error("Subscription not registered. Invalid url: " + uri);
+        }  
     }
 
     private Object parseMessage(MediatorHTTPRequest request) {
@@ -170,6 +176,16 @@ public class DsubActor extends UntypedActor {
             return (T) field.get(object);
         } catch (IllegalAccessException e) {
             throw new RuntimeException("Unable to read field: " + name, e);
+        }
+    }
+
+    private URL parseUrl(String url) {
+        try {
+            URI uri = new URL(url).toURI();
+            return uri.toURL();
+        }    
+        catch (Exception e) {
+            return null;
         }
     }
 }
