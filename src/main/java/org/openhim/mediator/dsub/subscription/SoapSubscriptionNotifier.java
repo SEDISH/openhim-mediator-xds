@@ -5,6 +5,8 @@ import org.openhim.mediator.messages.ITI53NotifyMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import akka.event.LoggingAdapter;
+
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -17,10 +19,11 @@ public class SoapSubscriptionNotifier implements SubscriptionNotifier {
 
     private MediatorConfig config;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SoapSubscriptionNotifier.class);
+    private final LoggingAdapter logA;
 
-    public SoapSubscriptionNotifier(MediatorConfig config) {
+    public SoapSubscriptionNotifier(MediatorConfig config, LoggingAdapter logA) {
         this.config = config;
+        this.logA = logA;
     }
 
     @Override
@@ -36,7 +39,7 @@ public class SoapSubscriptionNotifier implements SubscriptionNotifier {
     private void sendMessage(String url, byte[] body) {
         HttpURLConnection con = null;
         try {
-
+            logA.info("Connecting to: {}", url);
             URL myurl = new URL(url);
 
             con = (HttpURLConnection) myurl.openConnection();
@@ -50,7 +53,7 @@ public class SoapSubscriptionNotifier implements SubscriptionNotifier {
             }
 
             StringBuilder content;
-
+ 
             try (BufferedReader in = new BufferedReader(
                     new InputStreamReader(con.getInputStream()))) {
 
@@ -63,9 +66,9 @@ public class SoapSubscriptionNotifier implements SubscriptionNotifier {
                 }
             }
 
-            System.out.println(content.toString());
+            logA.info(content.toString());
         } catch (IOException exception) {
-            LOGGER.error(exception.getMessage());
+            logA.error(exception, exception.getMessage());
         } finally {
             con.disconnect();
         }

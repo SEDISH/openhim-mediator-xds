@@ -1,6 +1,6 @@
 {
   "urn": "urn:mediator:xds",
-  "version": "1.0.2-SNAPSHOT",
+  "version": "${version}",
   "name": "OpenHIE XDS.b Mediator",
   "description": "An XDS.b mediator for OpenHIE integration",
   "endpoints": [
@@ -14,9 +14,9 @@
   "defaultChannelConfig": [
     {
       "name": "XDS.b Mediator",
-      "urlPattern": "^/xds(registry|repository)$",
+      "urlPattern": "^/xds(registry|repository|brepository)$",
       "type": "http",
-      "allow": ["xds"],
+      "allow": ["xds,lnsp,xdsRole"],
       "routes": [
         {
           "name": "XDS.b Mediator",
@@ -28,7 +28,7 @@
       ]
     },
     {
-      "name": "DSUB",
+      "name": "XDS.b Mediator dsub",
       "urlPattern": "^/dsub$",
       "type": "http",
       "allow": ["xds"],
